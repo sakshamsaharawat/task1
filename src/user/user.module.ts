@@ -7,9 +7,7 @@ import { HttpModule } from '@nestjs/axios';
 import { MulterModule } from '@nestjs/platform-express';
 
 @Module({
-  imports: [HttpModule, MulterModule.register({
-    dest: "./uploads"
-  }),
+  imports: [HttpModule,
     MongooseModule.forFeature([{ name: User.name, schema: UserSchema }])
   ],
   controllers: [UserController],

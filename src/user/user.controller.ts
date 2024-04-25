@@ -1,13 +1,12 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, ValidationPipe, UseInterceptors, UploadedFile } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, UseInterceptors, UploadedFile } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { UserService } from './user.service';
 import { CreateUserDto } from './dto/create-user.dto';
-import { UpdateUserDto } from './dto/update-user.dto';
 import { SignInUserDto } from './dto/sign-in.input';
 import { SearchUserDto } from './dto/search-user.dto';
 import { BooleanMessage } from './interface/boolean-message.interface';
 import { User } from './schema/user.schema';
 import { UserlistDto } from './dto/list-user.dto';
-import { FileInterceptor } from '@nestjs/platform-express';
 
 @Controller('user')
 export class UserController {
@@ -42,14 +41,10 @@ export class UserController {
   list(@Body() userlistDto: UserlistDto): Promise<{ users: User[], totalCount: number }> {
     return this.userService.list(userlistDto);
   }
-  @Get('dummy')
-  find() {
-    return this.userService.find();
-  }
+
   @Post('upload')
   @UseInterceptors(FileInterceptor('file'))
-  uploadFile(@UploadedFile() file) {
-    // Handle file here, e.g., save to database or return response
-    return { filename: file.filename };
+  uploadFile(@UploadedFile() file: Express.Multer.File) {
+    return this.userService.uploadFile(file)
   }
 }
