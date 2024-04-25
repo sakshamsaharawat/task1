@@ -1,6 +1,6 @@
 import { SearchUserDto } from './dto/search-user.dto';
 import { SignInUserDto } from './dto/sign-in.input';
-import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException, UploadedFile } from '@nestjs/common';
 import { CreateUserDto } from './dto/create-user.dto';
 import { InjectModel } from '@nestjs/mongoose';
 import mongoose from 'mongoose';
@@ -12,8 +12,8 @@ import { HttpService } from '@nestjs/axios';
 import { catchError, firstValueFrom } from 'rxjs';
 import { AxiosError } from 'axios';
 import { extname } from 'path';
-import { diskStorage } from 'multer';
-import * as multer from 'multer';
+import { createWriteStream, existsSync, mkdirSync } from 'fs';
+import { Readable } from 'stream';
 
 
 
@@ -60,6 +60,7 @@ export class UserService {
   }
 
   async search(searchUserDto: SearchUserDto): Promise<User[]> {
+    console.log(searchUserDto)
     const a = new RegExp(searchUserDto.search, "i");
     const data = await this.userModel.find({
       $or: [
@@ -106,31 +107,37 @@ export class UserService {
     );
     return data;
   }
+  async uploadFile(@UploadedFile() file: Express.Multer.File) {
+    try {
+      if (!file || !file.buffer) {
+        throw new Error("Uploaded file or its buffer is undefined.");
+      }
+      const { originalname } = file;
+      const uniqueName = "test";
+      console.log("File buffer:", file.buffer);
+      const createReadStream = Readable.from(file.buffer);
 
-  async uploadFile(file): Promise<string> {
-    const fileName = uuidv4() + extname(file.originalname);
+      if (!existsSync("./uploads")) {
+        mkdirSync("./uploads", { recursive: true });
+      }
 
-    return new Promise<string>((resolve, reject) => {
-      const uploadPath = __dirname + '/../uploads/' + fileName;
-      const storage = diskStorage({
-        destination: (req, file, cb) => {
-          cb(null, __dirname + '/../uploads/');
-        },
-        filename: (req, file, cb) => {
-          cb(null, fileName);
-        },
+      let newName: string = `${uniqueName}${extname(originalname)}`;
+      console.log("New file name:", newName);
+
+      return new Promise((resolve, reject) => {
+        createReadStream
+          .pipe(createWriteStream("./uploads/" + newName))
+          .on('finish', () => resolve({ fileName: newName }))
+          .on('error', (err) => {
+            console.error("Error during file stream piping:", err);
+            reject(err);
+          });
       });
-
-      const upload = multer({ storage }).single('file');
-
-      upload(null, null, async (err) => {
-        if (err) {
-          reject(err);
-        } else {
-          resolve(uploadPath);
-        }
-      });
-    });
+    } catch (error) {
+      console.error("Error during file upload:", error);
+      throw new Error("Failed to upload file. Please try again."); // Improved error response
+    }
   }
+
 }
 
