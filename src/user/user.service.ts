@@ -1,3 +1,4 @@
+import { GetProfileResponse } from './decode/decode';
 import { SearchUserDto } from './dto/search-user.dto';
 import { SignInUserDto } from './dto/sign-in.input';
 import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException, UploadedFile } from '@nestjs/common';
@@ -14,7 +15,9 @@ import { AxiosError } from 'axios';
 import { extname } from 'path';
 import { createWriteStream, existsSync, mkdirSync } from 'fs';
 import { Readable } from 'stream';
-
+import { DecodeInput } from './dto/decode.inputs.dto';
+import { DecodeType } from './enum/decode.enum';
+import * as crypto from 'crypto';
 
 
 @Injectable()
@@ -81,12 +84,12 @@ export class UserService {
     return data;
   }
 
-  async profile(id: string): Promise<User> {
-    const profile = await this.userModel.findOne({ id });
+  async profile(id: string) {
+    const profile = await this.userModel.findOne({ id }).lean().exec();
     if (!profile) {
       throw new NotFoundException('User not found.');
     }
-    return profile;
+    return GetProfileResponse.decode(profile);
   }
 
   async list(userlistDto: UserlistDto): Promise<{ users: User[], totalCount: number }> {
@@ -136,6 +139,29 @@ export class UserService {
     } catch (error) {
       console.error("Error during file upload:", error);
       throw new Error("Failed to upload file. Please try again."); // Improved error response
+    }
+  }
+
+  async decode(decodeInput: DecodeInput) {
+    if (decodeInput.type === DecodeType.ENCRYPT) {
+      const key = Buffer.from(process.env.ENCRYPTION_KEY, 'base64');
+      const iv = Buffer.from(process.env.ENCRYPTION_IV_KEY, 'base64');
+
+      const cipher = crypto.createCipheriv('aes-256-cbc', key, iv);
+      let encrypted = cipher.update(decodeInput.value, 'utf-8', 'base64');
+      encrypted += cipher.final('base64');
+
+      return { value: encrypted };
+    }
+    if (decodeInput.type === DecodeType.DECRYPT) {
+      const key = Buffer.from(process.env.ENCRYPTION_KEY, 'base64');
+      const iv = Buffer.from(process.env.ENCRYPTION_IV_KEY, 'base64');
+
+      const decipher = crypto.createDecipheriv('aes-256-cbc', key, iv);
+      let decrypted = decipher.update(decodeInput.value, 'base64', 'utf-8');
+      decrypted += decipher.final('utf-8');
+
+      return { value: decrypted };
     }
   }
 
