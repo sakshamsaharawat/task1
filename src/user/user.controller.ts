@@ -7,6 +7,7 @@ import { SearchUserDto } from './dto/search-user.dto';
 import { BooleanMessage } from './interface/boolean-message.interface';
 import { User } from './schema/user.schema';
 import { UserlistDto } from './dto/list-user.dto';
+import { DecodeInput } from './dto/decode.inputs.dto';
 
 @Controller('user')
 export class UserController {
@@ -33,7 +34,7 @@ export class UserController {
   }
 
   @Post('profile/:id')
-  profile(@Param('id') id: string): Promise<User> {
+  profile(@Param('id') id: string) {
     return this.userService.profile(id);
   }
 
@@ -47,4 +48,10 @@ export class UserController {
   uploadFile(@UploadedFile() file: Express.Multer.File) {
     return this.userService.uploadFile(file)
   }
+
+  @Post('decode')
+  decode(@Body() decodeInput: DecodeInput) {
+    return this.userService.decode(decodeInput);
+  }
+
 }
